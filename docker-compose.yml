@@ -1,0 +1,18 @@
+services:
+  localtoolbox:
+    build: .
+    image: localtoolbox:latest
+    ports:
+      - "5000:5000"
+    environment:
+      FLASK_DEBUG: "false"
+      FLASK_HOST: "0.0.0.0"
+      FLASK_PORT: "5000"
+    volumes:
+      # 持久化上传与日志（可选）
+      - toolbox_uploads:/app/uploads
+      - toolbox_logs:/app/logs
+
+volumes:
+  toolbox_uploads:
+  toolbox_logs:
