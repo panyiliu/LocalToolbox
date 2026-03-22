@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block title %}{{ tool.name }} · 工具箱{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card p-4">
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                <div>
+                    <h2 class="mb-2">{{ tool.name }}</h2>
+                    <p class="text-muted mb-0">{{ tool.description }}</p>
+                </div>
+                <div class="text-end">
+                    <div class="d-flex gap-4 justify-content-end flex-wrap">
+                        <div>
+                            <div class="text-muted small">本地时间</div>
+                            <div id="localTime" class="fw-semibold" style="font-size: 1.15rem; color: #1a2634;"></div>
+                            <div id="localDate" class="text-muted small"></div>
+                        </div>
+                        <div>
+                            <div class="text-muted small">UTC 标准时间</div>
+                            <div id="utcTime" class="fw-semibold" style="font-size: 1.15rem; color: #1a2634;"></div>
+                            <div id="utcDate" class="text-muted small"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4" style="opacity: 0.08;">
+
+            <div class="row g-3 align-items-end mb-3">
+                <div class="col-md-6">
+                    <label for="filterInput" class="form-label fw-medium">搜索城市</label>
+                    <input id="filterInput" class="form-control" placeholder="输入城市/国家，例如：Tokyo、北京、France">
+                </div>
+                <div class="col-md-6 d-flex gap-2 justify-content-md-end">
+                    <button id="toggleSecondsBtn" class="btn btn-secondary">显示秒</button>
+                    <button id="resetBtn" class="btn btn-outline-secondary">重置</button>
+                </div>
+            </div>
+
+            <div id="mapWrap" style="background: #f8f9fc; border-radius: 18px; border: 1px solid rgba(0,0,0,0.04); overflow: hidden;">
+                <div id="map" style="height: 520px; width: 100%;"></div>
+            </div>
+
+            <div class="mt-3 text-muted small">
+                提示：地图与时间计算在浏览器本地完成；城市时间依赖系统/浏览器对 IANA 时区的支持（含夏令时）。
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Leaflet（轻量、CDN 即用） -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+const CITIES = [
+    // Americas
+    { city: 'Los Angeles', country: 'USA', tz: 'America/Los_Angeles', lat: 34.0522, lon: -118.2437 },
+    { city: 'New York', country: 'USA', tz: 'America/New_York', lat: 40.7128, lon: -74.0060 },
+    { city: 'São Paulo', country: 'Brazil', tz: 'America/Sao_Paulo', lat: -23.5505, lon: -46.6333 },
+    // Europe
+    { city: 'London', country: 'UK', tz: 'Europe/London', lat: 51.5074, lon: -0.1278 },
+    { city: 'Paris', country: 'France', tz: 'Europe/Paris', lat: 48.8566, lon: 2.3522 },
+    { city: 'Berlin', country: 'Germany', tz: 'Europe/Berlin', lat: 52.5200, lon: 13.4050 },
+    { city: 'Moscow', country: 'Russia', tz: 'Europe/Moscow', lat: 55.7558, lon: 37.6173 },
+    // Africa & Middle East
+    { city: 'Cairo', country: 'Egypt', tz: 'Africa/Cairo', lat: 30.0444, lon: 31.2357 },
+    { city: 'Nairobi', country: 'Kenya', tz: 'Africa/Nairobi', lat: -1.2921, lon: 36.8219 },
+    { city: 'Dubai', country: 'UAE', tz: 'Asia/Dubai', lat: 25.2048, lon: 55.2708 },
+    // Asia
+    { city: 'Beijing', country: 'China', tz: 'Asia/Shanghai', lat: 39.9042, lon: 116.4074 },
+    { city: 'Hong Kong', country: 'China', tz: 'Asia/Hong_Kong', lat: 22.3193, lon: 114.1694 },
+    { city: 'Singapore', country: 'Singapore', tz: 'Asia/Singapore', lat: 1.3521, lon: 103.8198 },
+    { city: 'Bangkok', country: 'Thailand', tz: 'Asia/Bangkok', lat: 13.7563, lon: 100.5018 },
+    { city: 'Mumbai', country: 'India', tz: 'Asia/Kolkata', lat: 19.0760, lon: 72.8777 },
+    { city: 'Tokyo', country: 'Japan', tz: 'Asia/Tokyo', lat: 35.6762, lon: 139.6503 },
+    { city: 'Seoul', country: 'South Korea', tz: 'Asia/Seoul', lat: 37.5665, lon: 126.9780 },
+    // Oceania
+    { city: 'Sydney', country: 'Australia', tz: 'Australia/Sydney', lat: -33.8688, lon: 151.2093 },
+    { city: 'Auckland', country: 'New Zealand', tz: 'Pacific/Auckland', lat: -36.8485, lon: 174.7633 },
+];
+
+let showSeconds = false;
+let filterText = '';
+let timer = null;
+let map = null;
+let markers = [];
+const tzSupportCache = new Map();
+
+function escapeHtml(str) {
+    return String(str)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+function supportsTimeZone(tz) {
+    if (tzSupportCache.has(tz)) return tzSupportCache.get(tz);
+    try {
+        new Intl.DateTimeFormat('zh-CN', { timeZone: tz }).format(new Date());
+        tzSupportCache.set(tz, true);
+        return true;
+    } catch (e) {
+        tzSupportCache.set(tz, false);
+        return false;
+    }
+}
+
+function tryGetOffsetLabel(now, tz) {
+    const tryOptions = [
+        { locale: 'en-US', options: { timeZone: tz, timeZoneName: 'shortOffset', hour: '2-digit', minute: '2-digit', hour12: false } },
+        { locale: 'en-US', options: { timeZone: tz, timeZoneName: 'short', hour: '2-digit', minute: '2-digit', hour12: false } },
+        { locale: 'zh-CN', options: { timeZone: tz, timeZoneName: 'short', hour: '2-digit', minute: '2-digit', hour12: false } },
+    ];
+    for (const item of tryOptions) {
+        try {
+            const parts = new Intl.DateTimeFormat(item.locale, item.options).formatToParts(now);
+            const tzName = parts.find(p => p.type === 'timeZoneName')?.value || '';
+            if (!tzName) continue;
+            const normalized = tzName.replace('GMT', 'UTC');
+            if (/UTC[+-]\d/.test(normalized) || /UTC/.test(normalized)) return normalized;
+        } catch (e) {}
+    }
+    return '';
+}
+
+function formatInZone(now, tz) {
+    const timeFormatter = new Intl.DateTimeFormat('zh-CN', {
+        timeZone: tz,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: showSeconds ? '2-digit' : undefined,
+        hour12: false
+    });
+    const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
+        timeZone: tz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short'
+    });
+    return { time: timeFormatter.format(now), date: dateFormatter.format(now) };
+}
+
+function buildPopupHtml(now, c) {
+    const ok = supportsTimeZone(c.tz);
+    if (!ok) {
+        return `
+            <div style="min-width: 240px;">
+                <div class="fw-semibold" style="color:#1a2634;">${escapeHtml(c.city)} · ${escapeHtml(c.country)}</div>
+                <div class="text-muted small">${escapeHtml(c.tz)}</div>
+                <div class="mt-2 text-warning small">该浏览器不支持此时区</div>
+            </div>
+        `;
+    }
+    const v = formatInZone(now, c.tz);
+    const offset = tryGetOffsetLabel(now, c.tz) || '--';
+    return `
+        <div style="min-width: 260px;">
+            <div class="d-flex align-items-start justify-content-between gap-2">
+                <div>
+                    <div class="fw-semibold" style="color:#1a2634;">${escapeHtml(c.city)} · ${escapeHtml(c.country)}</div>
+                    <div class="text-muted small">${escapeHtml(c.tz)}</div>
+                </div>
+                <span class="badge rounded-pill text-bg-light" style="border: 1px solid rgba(0,0,0,0.08);">${escapeHtml(offset)}</span>
+            </div>
+            <div class="mt-2" style="font-size: 1.35rem; font-weight: 600; color:#1a2634; letter-spacing:-0.2px;">
+                ${escapeHtml(v.time)}
+            </div>
+            <div class="text-muted small">${escapeHtml(v.date)}</div>
+        </div>
+    `;
+}
+
+function initMap() {
+    map = L.map('map', { worldCopyJump: true, zoomControl: true }).setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+}
+
+function rebuildMarkers() {
+    const safeFilter = (filterText || '').trim().toLowerCase();
+    const now = new Date();
+
+    // Remove old markers
+    markers.forEach(m => m.remove());
+    markers = [];
+
+    const list = CITIES.filter(c => {
+        if (!safeFilter) return true;
+        const hay = `${c.city} ${c.country} ${c.tz}`.toLowerCase();
+        return hay.includes(safeFilter);
+    });
+
+    list.forEach(c => {
+        const marker = L.marker([c.lat, c.lon], { title: `${c.city}, ${c.country}` }).addTo(map);
+        marker.bindPopup(buildPopupHtml(now, c));
+        marker._cityData = c;
+        markers.push(marker);
+    });
+}
+
+function tick() {
+    const now = new Date();
+
+    const localTimeFmt = new Intl.DateTimeFormat('zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: showSeconds ? '2-digit' : undefined,
+        hour12: false
+    }).format(now);
+    const localDateFmt = new Intl.DateTimeFormat('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short'
+    }).format(now);
+    document.getElementById('localTime').innerText = localTimeFmt;
+    document.getElementById('localDate').innerText = localDateFmt;
+
+    const utcTimeFmt = new Intl.DateTimeFormat('zh-CN', {
+        timeZone: 'UTC',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: showSeconds ? '2-digit' : undefined,
+        hour12: false
+    }).format(now);
+    const utcDateFmt = new Intl.DateTimeFormat('zh-CN', {
+        timeZone: 'UTC',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short'
+    }).format(now);
+    document.getElementById('utcTime').innerText = utcTimeFmt;
+    document.getElementById('utcDate').innerText = utcDateFmt;
+
+    // Refresh open popups so time stays live without user closing/reopening.
+    markers.forEach(m => {
+        if (!m.isPopupOpen || !m.isPopupOpen()) return;
+        const c = m._cityData;
+        m.setPopupContent(buildPopupHtml(now, c));
+    });
+}
+
+function start() {
+    if (timer) clearInterval(timer);
+    tick();
+    timer = setInterval(tick, showSeconds ? 250 : 1000);
+}
+
+document.getElementById('filterInput').addEventListener('input', (e) => {
+    filterText = e.target.value || '';
+    rebuildMarkers();
+});
+
+document.getElementById('toggleSecondsBtn').addEventListener('click', () => {
+    showSeconds = !showSeconds;
+    document.getElementById('toggleSecondsBtn').innerText = showSeconds ? '隐藏秒' : '显示秒';
+    start();
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+    showSeconds = false;
+    filterText = '';
+    document.getElementById('toggleSecondsBtn').innerText = '显示秒';
+    document.getElementById('filterInput').value = '';
+    rebuildMarkers();
+    start();
+});
+
+initMap();
+rebuildMarkers();
+start();
+</script>
+{% endblock %}
+

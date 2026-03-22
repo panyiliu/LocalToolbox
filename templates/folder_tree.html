@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ tool.name }} · 工具箱{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card p-4">
+            <h2 class="mb-3">{{ tool.name }}</h2>
+            <p class="text-muted mb-4">{{ tool.description }}</p>
+
+            <div class="mb-4">
+                <label for="folderInput" class="form-label fw-medium">📁 选择文件夹</label>
+                <input type="file" id="folderInput" class="form-control" webkitdirectory directory multiple>
+                <div class="form-text text-info">
+                    ℹ️ 选择文件夹时浏览器会提示“确定要上传整个文件夹吗？”——这是正常的安全提示，<strong>文件仅在前端处理，不会上传到任何服务器</strong>，请放心允许。
+                </div>
+            </div>
+
+            <div class="mb-3 d-flex gap-2 align-items-center">
+                <button id="generateBtn" class="btn btn-primary">生成文件树</button>
+                <button id="copyBtn" class="btn btn-outline-secondary" style="display: none;">复制到剪贴板</button>
+                <span id="status" class="ms-3 text-muted"></span>
+            </div>
+
+            <div id="treeContainer" style="background: #f8f9fc; border-radius: 18px; padding: 1rem; max-height: 500px; overflow: auto;">
+                <pre id="treeText" style="margin: 0; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem;"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('generateBtn').addEventListener('click', function() {
+    const input = document.getElementById('folderInput');
+    const files = input.files;
+    const status = document.getElementById('status');
+    const treeText = document.getElementById('treeText');
+    const copyBtn = document.getElementById('copyBtn');
+
+    if (!files || files.length === 0) {
+        status.innerText = '请先选择一个文件夹';
+        return;
+    }
+
+    status.innerText = '正在构建文件树...';
+
+    // 获取根文件夹名
+    const firstFile = files[0];
+    const rootName = firstFile.webkitRelativePath.split('/')[0];
+
+    // 使用 Map 存储目录节点
+    const root = { name: rootName, type: 'directory', children: new Map() };
+    const pathMap = new Map();
+    pathMap.set(rootName, root);
+
+    for (let file of files) {
+        const parts = file.webkitRelativePath.split('/');
+        let currentPath = parts[0];
+        let currentNode = root;
+
+        // 处理目录层级
+        for (let i = 1; i < parts.length - 1; i++) {
+            const part = parts[i];
+            const parentPath = currentPath;
+            currentPath += '/' + part;
+
+            if (!pathMap.has(currentPath)) {
+                const newDir = { name: part, type: 'directory', children: new Map() };
+                pathMap.set(currentPath, newDir);
+                const parentNode = pathMap.get(parentPath);
+                parentNode.children.set(part, newDir);
+            }
+            currentNode = pathMap.get(currentPath);
+        }
+
+        // 添加文件
+        const fileName = parts[parts.length - 1];
+        if (!currentNode.children.has(fileName)) {
+            currentNode.children.set(fileName, { name: fileName, type: 'file' });
+        }
+    }
+
+    // 递归生成树文本（类似 tree 命令）
+    function buildTreeText(node, prefix = '', isLast = true) {
+        let result = prefix;
+        if (node.type === 'directory') {
+            result += (prefix === '' ? '' : (isLast ? '└── ' : '├── ')) + node.name + '/\n';
+            const children = Array.from(node.children.values());
+            // 排序：目录在前，文件在后，按名称字母排序
+            children.sort((a, b) => {
+                if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+                return a.name.localeCompare(b.name);
+            });
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                const isLastChild = (i === children.length - 1);
+                const newPrefix = prefix + (isLast ? '    ' : '│   ');
+                result += buildTreeText(child, newPrefix, isLastChild);
+            }
+        } else {
+            result += (isLast ? '└── ' : '├── ') + node.name + '\n';
+        }
+        return result;
+    }
+
+    const treeString = buildTreeText(root);
+    treeText.innerText = treeString;
+
+    status.innerText = '文件树生成完成';
+    copyBtn.style.display = 'inline-block';
+});
+
+// 复制功能
+document.getElementById('copyBtn').addEventListener('click', function() {
+    const treeText = document.getElementById('treeText').innerText;
+    if (!treeText) {
+        alert('没有内容可复制');
+        return;
+    }
+    navigator.clipboard.writeText(treeText).then(() => {
+        alert('已复制到剪贴板');
+    }).catch(err => {
+        alert('复制失败，请手动选择复制');
+    });
+});
+</script>
+
+<style>
+#treeText {
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #1e293b;
+}
+</style>
+{% endblock %}

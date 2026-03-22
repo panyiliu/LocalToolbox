@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}优雅工具箱{% endblock %}</title>
+    <!-- Bootstrap 5 样式 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons 图标库（新增） -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- 自定义简洁样式（保留原有并增强） -->
+    <style>
+        body {
+            background-color: #f4f6fa;
+            font-family: -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif;
+        }
+        .navbar {
+            background-color: white !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .navbar-brand {
+            font-weight: 500;
+            color: #2c3e50 !important;
+            letter-spacing: -0.3px;
+        }
+        .card {
+            border: none;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            background: white;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -15px rgba(0,0,0,0.15);
+        }
+        .btn {
+            border-radius: 40px;
+            padding: 0.5rem 1.8rem;
+            font-weight: 500;
+            border: none;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #5d9bff;
+            background: linear-gradient(145deg, #5d9bff, #4a7fdb);
+        }
+        .btn-primary:hover {
+            background: #3f6eb0;
+            transform: scale(1.02);
+        }
+        .btn-secondary {
+            background: #e9ecf3;
+            color: #2c3e50;
+        }
+        .btn-secondary:hover {
+            background: #dde1e8;
+            color: #1e2b38;
+        }
+        .form-control, .form-select {
+            border-radius: 18px;
+            border: 1px solid #e0e4ec;
+            padding: 0.6rem 1.2rem;
+            background-color: #fafbfe;
+            transition: border 0.2s, box-shadow 0.2s;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: #5d9bff;
+            box-shadow: 0 0 0 4px rgba(93,155,255,0.15);
+            background-color: white;
+        }
+        h1, h2, h3 {
+            font-weight: 500;
+            color: #1a2634;
+            letter-spacing: -0.5px;
+        }
+        .container {
+            max-width: 1000px;
+        }
+        /* 新增：图标与文字对齐辅助 */
+        .bi {
+            vertical-align: -0.125em;
+        }
+        .feature-icon {
+            font-size: 2rem;
+            color: #5d9bff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 3rem;  /* 固定高度，确保所有图标容器大小一致 */
+            margin-bottom: 1rem; /* 与 mb-3 作用相同，可保留或删除 */
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-tools me-2"></i>Ethan's Toolbox
+            </a>
+        </div>
+    </nav>
+    <div class="container mt-5">
+        {% block content %}{% endblock %}
+    </div>
+    <footer class="text-center text-muted py-4 small">
+        <i class="bi bi-star-fill me-1" style="color: #ffc107;"></i> 本地工具集 · 不想用云端的
+    </footer>
+</body>
+</html>

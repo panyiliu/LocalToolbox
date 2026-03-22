@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Flask / 本地数据（勿提交）
+uploads/*
+!uploads/.gitkeep
+logs/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 密钥 / 环境
+.env
+.env.*

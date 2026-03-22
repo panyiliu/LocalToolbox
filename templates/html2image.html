@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ tool.name }} · 工具箱{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card p-4">
+            <h2 class="mb-3">
+                <i class="bi bi-filetype-html me-2" style="color: #5d9bff;"></i>{{ tool.name }}
+            </h2>
+            <p class="text-muted mb-4">{{ tool.description }}</p>
+            <form id="toolForm" enctype="multipart/form-data">
+                <div class="mb-4">
+                    <label for="html_file" class="form-label fw-medium">
+                        <i class="bi bi-file-earmark-code me-1"></i>选择 HTML 文件
+                    </label>
+                    <input class="form-control" type="file" id="html_file" name="html_file" accept=".html,.htm" required>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="format" class="form-label fw-medium">
+                            <i class="bi bi-image me-1"></i>输出格式
+                        </label>
+                        <select class="form-select" id="format" name="format">
+                            <option value="JPEG" selected>JPEG</option>
+                            <option value="PNG">PNG</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="quality" class="form-label fw-medium">
+                            <i class="bi bi-sliders2 me-1"></i>质量 (仅 JPEG)
+                        </label>
+                        <input type="number" class="form-control" id="quality" name="quality" min="1" max="100" value="95">
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-5">
+                        <i class="bi bi-play-circle me-1"></i>开始转换
+                    </button>
+                    <a href="/" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>返回主页
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/common.js') }}"></script>
+<script>
+document.getElementById('toolForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerText;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>转换中...';
+    submitBtn.disabled = true;
+
+    try {
+        const result = await apiRequest('/api/{{ tool.id }}', formData);
+        if (result.type === 'file') {
+            downloadBlob(result.blob, result.filename);
+        } else if (result.type === 'json') {
+            console.log('转换成功:', result.data);
+        }
+    } catch (error) {
+        console.error(error);
+    } finally {
+        submitBtn.innerHTML = '<i class="bi bi-play-circle me-1"></i>开始转换';
+        submitBtn.disabled = false;
+    }
+});
+</script>
+{% endblock %}

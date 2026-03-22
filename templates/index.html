@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}主页 · 工具箱{% endblock %}
+{% block content %}
+<div class="text-center mb-5">
+    <h1 class="display-6 fw-normal">
+        <i class="bi bi-grid-3x3-gap-fill me-2" style="color: #5d9bff;"></i>所有工具
+    </h1>
+    <p class="text-muted">选择你需要的功能，轻松转换</p>
+</div>
+<div class="row g-4">
+    {% for tool in tools %}
+    <div class="col-md-4">
+        <div class="card h-100 p-3">
+            <div class="card-body text-center">
+                <!-- 使用工具配置的图标 -->
+                <div class="feature-icon mb-3">
+                    <i class="bi {{ tool.icon }}"></i>
+                </div>
+                <h5 class="card-title">{{ tool.name }}</h5>
+                <p class="card-text text-muted small">{{ tool.description }}</p>
+                <a href="/tool/{{ tool.id }}" class="btn btn-primary mt-2">
+                    使用工具 <i class="bi bi-arrow-right-short"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
