@@ -1,134 +1,593 @@
 {% extends "base.html" %}
-{% block title %}{{ tool.name }} · 工具箱{% endblock %}
+{% block title %}{{ tool.name }} · Ethan's Toolbox{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-10">
-        <div class="card p-4">
-            <h2 class="mb-3">{{ tool.name }}</h2>
+<div class="tb-page-wrap">
+    <div class="tb-back"><a href="/"><i class="bi bi-arrow-left-short me-1"></i>返回所有工具</a></div>
+    <div class="tb-panel p-4 p-md-5">
+            <h2 class="tb-title mb-3"><i class="bi bi-folder2-open me-2 tb-heading-icon"></i>{{ tool.name }}</h2>
             <p class="text-muted mb-4">{{ tool.description }}</p>
 
-            <div class="mb-4">
+            <div class="mb-4 folder-drop-zone" id="folderDropZone">
                 <label for="folderInput" class="form-label fw-medium">📁 选择文件夹</label>
                 <input type="file" id="folderInput" class="form-control" webkitdirectory directory multiple>
                 <div class="form-text text-info">
                     ℹ️ 选择文件夹时浏览器会提示“确定要上传整个文件夹吗？”——这是正常的安全提示，<strong>文件仅在前端处理，不会上传到任何服务器</strong>，请放心允许。
                 </div>
+                <p class="form-text text-muted mb-0 mt-2">或将文件夹从 Windows 资源管理器拖放到本区域；拖入后会自动开始生成（Chrome / Edge 体验最佳）。</p>
             </div>
 
-            <div class="mb-3 d-flex gap-2 align-items-center">
-                <button id="generateBtn" class="btn btn-primary">生成文件树</button>
-                <button id="copyBtn" class="btn btn-outline-secondary" style="display: none;">复制到剪贴板</button>
-                <span id="status" class="ms-3 text-muted"></span>
+            <div class="mb-3">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <button id="generateBtn" class="btn btn-primary">生成文件树</button>
+                    <button id="cancelBtn" class="btn btn-outline-secondary" style="display: none;">取消</button>
+                    <button id="copyBtn" class="btn btn-outline-secondary" style="display: none;">复制到剪贴板</button>
+                    <span id="status" class="ms-2 text-muted"></span>
+                </div>
+                <div class="row g-2 align-items-center mt-2">
+                    <div class="col-12 col-md-3">
+                        <label for="maxNodesInput" class="form-label mb-1">节点上限</label>
+                        <input type="number" id="maxNodesInput" class="form-control" min="1000" step="1000" value="20000">
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label for="maxDepthInput" class="form-label mb-1">最大深度</label>
+                        <input type="number" id="maxDepthInput" class="form-control" min="1" step="1" value="20">
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label for="maxLinesInput" class="form-label mb-1">最大行数</label>
+                        <input type="number" id="maxLinesInput" class="form-control" min="200" step="200" value="8000">
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label mb-1 d-flex align-items-center gap-2">
+                            <input type="checkbox" id="sortCheckbox" checked>
+                            是否排序（更精确但更慢）
+                        </label>
+                    </div>
+                </div>
+                <div class="form-text text-muted mt-2">
+                    超大目录会自动截断以避免卡死；输出只会展示目录结构，不读取/不上传文件内容。
+                </div>
             </div>
 
-            <div id="treeContainer" style="background: #f8f9fc; border-radius: 18px; padding: 1rem; max-height: 500px; overflow: auto;">
+            <div id="treeContainer" class="tb-code-box" style="max-height: 500px; overflow: auto;">
                 <pre id="treeText" style="margin: 0; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem;"></pre>
             </div>
-        </div>
     </div>
 </div>
 
 <script>
-document.getElementById('generateBtn').addEventListener('click', function() {
     const input = document.getElementById('folderInput');
-    const files = input.files;
     const status = document.getElementById('status');
     const treeText = document.getElementById('treeText');
     const copyBtn = document.getElementById('copyBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
 
-    if (!files || files.length === 0) {
-        status.innerText = '请先选择一个文件夹';
-        return;
+    const maxNodesInput = document.getElementById('maxNodesInput');
+    const maxDepthInput = document.getElementById('maxDepthInput');
+    const maxLinesInput = document.getElementById('maxLinesInput');
+    const sortCheckbox = document.getElementById('sortCheckbox');
+    const folderDropZone = document.getElementById('folderDropZone');
+
+    let worker = null;
+    let cancelRequested = false;
+    let currentToken = 0;
+
+    function clampInt(v, min, max, fallback) {
+        const n = parseInt(v, 10);
+        if (Number.isNaN(n)) return fallback;
+        return Math.max(min, Math.min(max, n));
     }
 
-    status.innerText = '正在构建文件树...';
+    function pathSegmentCount(relPath) {
+        if (!relPath) return 0;
+        return relPath.split('/').filter(Boolean).length;
+    }
 
-    // 获取根文件夹名
-    const firstFile = files[0];
-    const rootName = firstFile.webkitRelativePath.split('/')[0];
-
-    // 使用 Map 存储目录节点
-    const root = { name: rootName, type: 'directory', children: new Map() };
-    const pathMap = new Map();
-    pathMap.set(rootName, root);
-
-    for (let file of files) {
-        const parts = file.webkitRelativePath.split('/');
-        let currentPath = parts[0];
-        let currentNode = root;
-
-        // 处理目录层级
-        for (let i = 1; i < parts.length - 1; i++) {
-            const part = parts[i];
-            const parentPath = currentPath;
-            currentPath += '/' + part;
-
-            if (!pathMap.has(currentPath)) {
-                const newDir = { name: part, type: 'directory', children: new Map() };
-                pathMap.set(currentPath, newDir);
-                const parentNode = pathMap.get(parentPath);
-                parentNode.children.set(part, newDir);
+    function readAllDirectoryEntries(dirReader) {
+        return new Promise(function(resolve, reject) {
+            const all = [];
+            function readBatch() {
+                dirReader.readEntries(function(entries) {
+                    if (entries.length === 0) {
+                        resolve(all);
+                        return;
+                    }
+                    for (let i = 0; i < entries.length; i++) {
+                        all.push(entries[i]);
+                    }
+                    readBatch();
+                }, reject);
             }
-            currentNode = pathMap.get(currentPath);
-        }
-
-        // 添加文件
-        const fileName = parts[parts.length - 1];
-        if (!currentNode.children.has(fileName)) {
-            currentNode.children.set(fileName, { name: fileName, type: 'file' });
-        }
+            readBatch();
+        });
     }
 
-    // 递归生成树文本（类似 tree 命令）
-    function buildTreeText(node, prefix = '', isLast = true) {
-        let result = prefix;
-        if (node.type === 'directory') {
-            result += (prefix === '' ? '' : (isLast ? '└── ' : '├── ')) + node.name + '/\n';
-            const children = Array.from(node.children.values());
-            // 排序：目录在前，文件在后，按名称字母排序
-            children.sort((a, b) => {
-                if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
-                return a.name.localeCompare(b.name);
-            });
-            for (let i = 0; i < children.length; i++) {
-                const child = children[i];
-                const isLastChild = (i === children.length - 1);
-                const newPrefix = prefix + (isLast ? '    ' : '│   ');
-                result += buildTreeText(child, newPrefix, isLastChild);
+    function collectPathsFromEntry(entry, pathPrefix, paths) {
+        return new Promise(function(resolve, reject) {
+            if (entry.isFile) {
+                paths.push(pathPrefix + entry.name);
+                resolve();
+                return;
             }
-        } else {
-            result += (isLast ? '└── ' : '├── ') + node.name + '\n';
+            if (entry.isDirectory) {
+                const base = pathPrefix + entry.name + '/';
+                const reader = entry.createReader();
+                readAllDirectoryEntries(reader).then(function(entries) {
+                    let i = 0;
+                    function next() {
+                        if (i >= entries.length) {
+                            resolve();
+                            return;
+                        }
+                        collectPathsFromEntry(entries[i], base, paths).then(function() {
+                            i++;
+                            next();
+                        }).catch(reject);
+                    }
+                    next();
+                }).catch(reject);
+                return;
+            }
+            resolve();
+        });
+    }
+
+    async function collectPathsFromDataTransfer(dt) {
+        const paths = [];
+        const items = dt.items ? Array.from(dt.items) : [];
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const entry = (item.webkitGetAsEntry && item.webkitGetAsEntry()) ||
+                (item.getAsEntry && item.getAsEntry());
+            if (entry) {
+                await collectPathsFromEntry(entry, '', paths);
+            }
         }
-        return result;
+        return paths;
     }
 
-    const treeString = buildTreeText(root);
-    treeText.innerText = treeString;
+    function createWorker() {
+        const workerCode = `
+            // WebWorker 内部：只构建目录树结构 + 生成最多 maxLines 的树文本
+            let cfg = null;
+            let superRoot = null;
+            let createdNodes = 0; // 目录节点 + 文件节点（包含都算一个节点）
+            let processedPathCount = 0; // 用于和 main 传入的 totalPaths 对齐
+            let stopInsert = false;
 
-    status.innerText = '文件树生成完成';
-    copyBtn.style.display = 'inline-block';
-});
+            // stopReason: { type: 'nodeCap'|'lineCap'|'none', remaining: number|null, createdNodes: number|null }
+            let stopReason = { type: 'none', remaining: null, createdNodes: null };
+            let depthCollapsed = false;
 
-// 复制功能
-document.getElementById('copyBtn').addEventListener('click', function() {
-    const treeText = document.getElementById('treeText').innerText;
-    if (!treeText) {
-        alert('没有内容可复制');
-        return;
+            function resetState(config) {
+                cfg = config;
+                createdNodes = 0;
+                processedPathCount = 0;
+                stopInsert = false;
+                depthCollapsed = false;
+                stopReason = { type: 'none', remaining: null, createdNodes: null };
+                superRoot = { name: '', type: 'directory', children: new Map() };
+            }
+
+            function maybeTriggerNodeCap() {
+                if (!stopInsert && createdNodes >= cfg.maxNodes) {
+                    stopInsert = true;
+                    stopReason = {
+                        type: 'nodeCap',
+                        remaining: cfg.totalPaths - processedPathCount,
+                        createdNodes: createdNodes
+                    };
+                    self.postMessage({
+                        type: 'limitReached',
+                        reason: 'nodeCap',
+                        processedPathCount,
+                        createdNodes: createdNodes,
+                        remaining: cfg.totalPaths - processedPathCount
+                    });
+                    return true;
+                }
+                return false;
+            }
+
+            function insertPath(relPath) {
+                if (!relPath) return;
+                const segments = relPath.split('/');
+                if (segments.length < 2) return;
+                const fileName = segments[segments.length - 1];
+                const dirParts = segments.slice(0, -1);
+
+                let current = superRoot;
+                for (const part of dirParts) {
+                    if (!part) continue;
+                    if (!current.children.has(part)) {
+                        current.children.set(part, { name: part, type: 'directory', children: new Map() });
+                        createdNodes++;
+                        if (maybeTriggerNodeCap()) return;
+                    }
+                    current = current.children.get(part);
+                }
+
+                // 文件
+                if (!current.children.has(fileName)) {
+                    current.children.set(fileName, { name: fileName, type: 'file' });
+                    createdNodes++;
+                    maybeTriggerNodeCap();
+                }
+            }
+
+            function getSortedChildren(node) {
+                const arr = Array.from(node.children.values());
+                if (!cfg.sortEnabled) return arr;
+                // 目录在前，文件在后；再按名称排序
+                arr.sort((a, b) => {
+                    if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+                    return a.name.localeCompare(b.name);
+                });
+                return arr;
+            }
+
+            function buildTreeText() {
+                const lines = [];
+
+                function pushLine(s) {
+                    if (lines.length >= cfg.maxLines) {
+                        if (stopReason.type !== 'lineCap') {
+                            stopReason = { type: 'lineCap', remaining: null, createdNodes: createdNodes };
+                        }
+                        return false;
+                    }
+                    lines.push(s);
+                    return true;
+                }
+
+                function buildNodeText(node, prefix, isLast, depth) {
+                    if (stopReason.type === 'lineCap') return false;
+
+                    if (node.type === 'directory') {
+                        const connector = (prefix === '') ? '' : (isLast ? '└── ' : '├── ');
+                        if (!pushLine(prefix + connector + node.name + '/')) return false;
+
+                        if (depth >= cfg.maxDepth) {
+                            // 到达深度上限，不再展开
+                            if (node.children && node.children.size > 0) {
+                                depthCollapsed = true;
+                                const collapsePrefix = prefix + (isLast ? '    ' : '│   ');
+                                if (!pushLine(collapsePrefix + '... (更深层已折叠)')) return false;
+                            }
+                            return true;
+                        }
+
+                        const children = getSortedChildren(node);
+                        for (let i = 0; i < children.length; i++) {
+                            const child = children[i];
+                            const isLastChild = (i === children.length - 1);
+                            const newPrefix = prefix + (isLast ? '    ' : '│   ');
+                            if (!buildNodeText(child, newPrefix, isLastChild, depth + 1)) return false;
+                        }
+                    } else {
+                        const connector = isLast ? '└── ' : '├── ';
+                        if (!pushLine(prefix + connector + node.name)) return false;
+                    }
+                    return true;
+                }
+
+                // 尽量保持原先的“根目录名/”第一行体验：如果只有一个顶层目录，则把它当根。
+                const topDirs = Array.from(superRoot.children.values());
+                if (topDirs.length === 0) return '';
+
+                if (topDirs.length === 1) {
+                    buildNodeText(topDirs[0], '', true, 0);
+                } else {
+                    // 多根情况：逐个顶层目录输出（不画复杂连线，避免输出爆炸）
+                    // 同样会受 maxLines/maxDepth 限制。
+                    const sorted = cfg.sortEnabled
+                        ? topDirs.slice().sort((a, b) => a.name.localeCompare(b.name))
+                        : topDirs;
+                    for (let i = 0; i < sorted.length; i++) {
+                        if (stopReason.type === 'lineCap') break;
+                        const isLast = (i === sorted.length - 1);
+                        buildNodeText(sorted[i], '', isLast, 0);
+                    }
+                }
+
+                // 末尾附加截断提示（尽量短）
+                if (stopReason.type === 'nodeCap') {
+                    pushLine('...（已截断：达到节点上限 maxNodes=' + cfg.maxNodes + '，未展示剩余内容）');
+                } else if (stopReason.type === 'lineCap') {
+                    pushLine('...（已截断：输出行数达到上限 maxLines=' + cfg.maxLines + '）');
+                } else if (depthCollapsed) {
+                    pushLine('...（包含更多层级，但已按 maxDepth 折叠）');
+                }
+
+                return lines.join('\\n');
+            }
+
+            self.onmessage = (e) => {
+                const msg = e.data || {};
+                if (msg.type === 'init') {
+                    resetState(msg);
+                    self.postMessage({ type: 'ready', totalPaths: cfg.totalPaths });
+                    return;
+                }
+
+                if (!cfg) return;
+                if (msg.type === 'paths') {
+                    const paths = msg.paths || [];
+                    // 每个 paths 项都算一次 processed（和 main 的 totalPaths 对齐）
+                    processedPathCount += paths.length;
+
+                    for (const relPath of paths) {
+                        if (stopInsert) break;
+                        insertPath(relPath);
+                    }
+
+                    self.postMessage({
+                        type: 'progress',
+                        processedPathCount,
+                        createdNodes
+                    });
+                    return;
+                }
+
+                if (msg.type === 'end') {
+                    const treeString = buildTreeText();
+                    self.postMessage({
+                        type: 'done',
+                        treeString,
+                        stopReason,
+                        processedPathCount,
+                        createdNodes,
+                        totalPaths: cfg.totalPaths
+                    });
+                }
+            };
+        `;
+
+        const blob = new Blob([workerCode], { type: 'text/javascript' });
+        const url = URL.createObjectURL(blob);
+        return new Worker(url);
     }
-    navigator.clipboard.writeText(treeText).then(() => {
-        alert('已复制到剪贴板');
-    }).catch(err => {
-        alert('复制失败，请手动选择复制');
+
+    async function generateTreeFromPaths(relPaths) {
+        if (!relPaths || relPaths.length === 0) {
+            status.innerText = '没有可用的文件路径，请重新选择或拖入文件夹';
+            return;
+        }
+
+        const maxNodes = clampInt(maxNodesInput.value, 1000, 2000000, 20000);
+        const maxDepth = clampInt(maxDepthInput.value, 1, 200, 20);
+        const maxLines = clampInt(maxLinesInput.value, 200, 200000, 8000);
+        const sortEnabled = !!sortCheckbox.checked;
+
+        treeText.innerText = '';
+        copyBtn.style.display = 'none';
+        cancelRequested = false;
+        currentToken++;
+        const token = currentToken;
+        generateBtn.disabled = true;
+        cancelBtn.style.display = 'inline-block';
+        status.innerText = '初始化中...';
+
+        if (worker) {
+            try { worker.terminate(); } catch (e) {}
+            worker = null;
+        }
+        worker = createWorker();
+
+        let workerLimited = false;
+        const total = relPaths.length;
+
+        worker.onmessage = (ev) => {
+            const data = ev.data || {};
+            if (token !== currentToken) return;
+
+            if (data.type === 'ready') {
+                status.innerText = '开始构建文件树...';
+                return;
+            }
+
+            if (data.type === 'progress') {
+                status.innerText = '处理中：已处理 ' + data.processedPathCount + ' / ' + total + '（已创建节点 ' + data.createdNodes + '）';
+                return;
+            }
+
+            if (data.type === 'done') {
+                if (cancelRequested) return;
+                treeText.innerText = data.treeString || '';
+                if (data.stopReason && data.stopReason.type === 'nodeCap') {
+                    status.innerText = '文件树生成完成（已截断：达到节点上限）';
+                } else if (data.stopReason && data.stopReason.type === 'lineCap') {
+                    status.innerText = '文件树生成完成（已截断：达到输出行数上限）';
+                } else if (data.stopReason && data.stopReason.type === 'none' && data.treeString && data.treeString.includes('...（包含更多层级')) {
+                    status.innerText = '文件树生成完成（深度已折叠）';
+                } else {
+                    status.innerText = '文件树生成完成';
+                }
+                copyBtn.style.display = 'inline-block';
+
+                generateBtn.disabled = false;
+                cancelBtn.style.display = 'none';
+                try { worker.terminate(); } catch (e) {}
+                worker = null;
+            }
+
+            if (data.type === 'limitReached') {
+                workerLimited = true;
+                status.innerText = '处理中：已触发节点上限，停止发送剩余路径...（已创建节点 ' + data.createdNodes + '）';
+            }
+        };
+
+        worker.onerror = (err) => {
+            if (token !== currentToken) return;
+            status.innerText = '构建失败：' + (err && err.message ? err.message : '未知错误');
+            generateBtn.disabled = false;
+            cancelBtn.style.display = 'none';
+            try { worker.terminate(); } catch (e) {}
+            worker = null;
+        };
+
+        const chunkSize = 2000;
+        let buffer = [];
+        const yieldToUI = () => new Promise(resolve => setTimeout(resolve, 0));
+
+        worker.postMessage({
+            type: 'init',
+            maxNodes,
+            maxDepth,
+            maxLines,
+            sortEnabled,
+            totalPaths: total
+        });
+
+        status.innerText = '读取索引中...（不读取文件内容）';
+
+        for (let i = 0; i < total; i++) {
+            if (token !== currentToken) break;
+            if (cancelRequested) break;
+            if (workerLimited) break;
+
+            buffer.push(relPaths[i]);
+
+            if (buffer.length >= chunkSize) {
+                if (token !== currentToken) break;
+                worker.postMessage({ type: 'paths', paths: buffer });
+                buffer = [];
+                await yieldToUI();
+            }
+        }
+
+        if (token === currentToken && !cancelRequested) {
+            if (!workerLimited && buffer.length > 0) {
+                worker.postMessage({ type: 'paths', paths: buffer });
+            }
+            worker.postMessage({ type: 'end' });
+        }
+    }
+
+    async function generateTree() {
+        const files = input.files;
+        if (!files || files.length === 0) {
+            status.innerText = '请先选择一个文件夹';
+            return;
+        }
+        const relPaths = Array.from(files).map(function(f) { return f.webkitRelativePath || ''; }).filter(Boolean);
+        await generateTreeFromPaths(relPaths);
+    }
+
+    generateBtn.addEventListener('click', function() {
+        generateTree();
     });
-});
+
+    folderDropZone.addEventListener('dragenter', function(e) {
+        e.preventDefault();
+        folderDropZone.classList.add('drop-active');
+    });
+    folderDropZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        const related = e.relatedTarget;
+        if (!related || !folderDropZone.contains(related)) {
+            folderDropZone.classList.remove('drop-active');
+        }
+    });
+    folderDropZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'copy';
+        }
+    });
+    folderDropZone.addEventListener('drop', async function(e) {
+        e.preventDefault();
+        folderDropZone.classList.remove('drop-active');
+        const dt = e.dataTransfer;
+        const items = dt && dt.items ? Array.from(dt.items) : [];
+        if (items.length === 0) {
+            status.innerText = '未识别到拖入内容';
+            return;
+        }
+        const hasEntryApi = items.some(function(it) {
+            return (typeof it.webkitGetAsEntry === 'function') || (typeof it.getAsEntry === 'function');
+        });
+        if (!hasEntryApi) {
+            status.innerText = '当前浏览器不支持文件夹拖放，请使用上方「选择文件夹」或换用 Chrome / Edge。';
+            return;
+        }
+        status.innerText = '正在扫描拖入的文件夹...';
+        try {
+            const relPaths = await collectPathsFromDataTransfer(dt);
+            const usable = relPaths.filter(function(p) { return pathSegmentCount(p) >= 2; });
+            if (usable.length === 0) {
+                status.innerText = '未找到可展示的路径（请拖入整个文件夹，不要只拖单个文件）。';
+                return;
+            }
+            await generateTreeFromPaths(usable);
+        } catch (err) {
+            status.innerText = '读取拖放内容失败：' + (err && err.message ? err.message : '未知错误');
+            generateBtn.disabled = false;
+        }
+    });
+
+    cancelBtn.addEventListener('click', function() {
+        cancelRequested = true;
+        status.innerText = '已取消';
+        generateBtn.disabled = false;
+        cancelBtn.style.display = 'none';
+        if (worker) {
+            try { worker.terminate(); } catch (e) {}
+            worker = null;
+        }
+    });
+
+    async function copyText(text) {
+        // Clipboard API 仅在安全上下文（https / localhost）可用；否则回退到 execCommand
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(text);
+            return;
+        }
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (!ok) throw new Error('copy-failed');
+    }
+
+    // 复制功能
+    copyBtn.addEventListener('click', async function() {
+        const text = treeText.innerText;
+        if (!text) {
+            alert('没有内容可复制');
+            return;
+        }
+        try {
+            await copyText(text);
+            alert('已复制到剪贴板');
+        } catch (e) {
+            alert('复制失败，请手动选择复制');
+        }
+    });
 </script>
 
 <style>
+.folder-drop-zone {
+    border: 2px dashed var(--border, rgba(128, 128, 128, 0.45));
+    border-radius: 0.5rem;
+    padding: 1rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.folder-drop-zone.drop-active {
+    border-color: var(--accent, #0d6efd);
+    background-color: rgba(13, 110, 253, 0.06);
+}
 #treeText {
     white-space: pre-wrap;
     word-break: break-all;
-    color: #1e293b;
+    color: var(--text2);
 }
 </style>
 {% endblock %}

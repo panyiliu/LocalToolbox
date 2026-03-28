@@ -1,17 +1,17 @@
 {% extends "base.html" %}
-{% block title %}{{ tool.name }} · 工具箱{% endblock %}
+{% block title %}{{ tool.name }} · Ethan's Toolbox{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-10">
-        <div class="card p-4">
-            <h2 class="mb-3">
-                <i class="bi bi-camera me-2" style="color: #5d9bff;"></i>{{ tool.name }}
+<div class="tb-page-wrap">
+    <div class="tb-back"><a href="/"><i class="bi bi-arrow-left-short me-1"></i>返回所有工具</a></div>
+    <div class="tb-panel p-4 p-md-5">
+            <h2 class="tb-title mb-3">
+                <i class="bi bi-camera me-2 tb-heading-icon"></i>{{ tool.name }}
             </h2>
             <p class="text-muted mb-4">{{ tool.description }}</p>
 
             <!-- 拖拽区域 -->
-            <div id="dropZone" class="border rounded-3 p-5 mb-4 text-center bg-light" style="border: 2px dashed #5d9bff !important; cursor: pointer;">
-                <i class="bi bi-cloud-upload" style="font-size: 3rem; color: #5d9bff;"></i>
+            <div id="dropZone" class="tb-dropzone rounded-3 p-5 mb-4 text-center">
+                <i class="bi bi-cloud-upload tb-heading-icon" style="font-size: 3rem;"></i>
                 <p class="mt-2 mb-0">拖拽照片或文件夹到这里</p>
                 <p class="small text-muted">或点击下方按钮选择</p>
             </div>
@@ -36,10 +36,10 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0">已选文件预览</h6>
                     <div>
-                        <button id="addMoreBtn" class="btn btn-sm btn-soft-primary me-2">
+                        <button id="addMoreBtn" class="btn btn-sm tb-soft-primary me-2">
                             <i class="bi bi-plus-lg"></i> 添加更多
                         </button>
-                        <button id="clearAllBtn" class="btn btn-sm btn-soft-danger">
+                        <button id="clearAllBtn" class="btn btn-sm tb-soft-danger">
                             <i class="bi bi-trash"></i> 清空所有
                         </button>
                     </div>
@@ -59,7 +59,6 @@
 
             <!-- 进度提示 -->
             <div id="status" class="mt-3 text-muted"></div>
-        </div>
     </div>
 </div>
 
@@ -345,42 +344,5 @@
     box-shadow: 0 4px 8px rgba(220,53,69,0.3);
 }
 
-/* 柔和按钮样式 */
-.btn-soft-primary {
-    background-color: rgba(93, 155, 255, 0.1);
-    color: #5d9bff;
-    border: 1px solid transparent;
-    border-radius: 40px;
-    padding: 0.3rem 1.2rem;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-.btn-soft-primary:hover {
-    background-color: #5d9bff;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(93,155,255,0.3);
-}
-
-.btn-soft-danger {
-    background-color: rgba(220, 53, 69, 0.1);
-    color: #dc3545;
-    border: 1px solid transparent;
-    border-radius: 40px;
-    padding: 0.3rem 1.2rem;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-.btn-soft-danger:hover {
-    background-color: #dc3545;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(220,53,69,0.3);
-}
-
-/* 确保按钮内的图标和文字对齐 */
-.btn-soft-primary i, .btn-soft-danger i {
-    vertical-align: -0.125em;
-}
 </style>
 {% endblock %}

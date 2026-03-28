@@ -3,109 +3,455 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}优雅工具箱{% endblock %}</title>
-    <!-- Bootstrap 5 样式 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons 图标库（新增） -->
+    <title>{% block title %}Ethan's Toolbox · 极简高效{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- 自定义简洁样式（保留原有并增强） -->
     <style>
+        :root {
+            --bg: #f8f9ff;
+            --surface: rgba(255, 255, 255, 0.75);
+            --surface-d: rgba(255, 255, 255, 0.92);
+            --accent: #6366f1;
+            --accent-h: #4f46e5;
+            --accent-d: #4338ca;
+            --accent-soft: rgba(99, 102, 241, 0.12);
+            --text: #0f172a;
+            --text2: #475569;
+            --text3: #64748b;
+            --radius: 20px;
+            --shadow-sm: 0 6px 16px -4px rgba(99, 102, 241, 0.08);
+            --shadow-md: 0 12px 32px -8px rgba(99, 102, 241, 0.14);
+            --transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.28s ease, background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+            --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            background-color: #f4f6fa;
-            font-family: -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            min-height: 100dvh;
+            padding-bottom: 3rem;
         }
+
         .navbar {
-            background-color: white !important;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-            border-bottom: 1px solid rgba(0,0,0,0.05);
+            background: rgba(255, 255, 255, 0.82) !important;
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+            box-shadow: none !important;
         }
+
         .navbar-brand {
-            font-weight: 500;
-            color: #2c3e50 !important;
-            letter-spacing: -0.3px;
-        }
-        .card {
-            border: none;
-            border-radius: 24px;
-            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            background: white;
-        }
-        .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px -15px rgba(0,0,0,0.15);
-        }
-        .btn {
-            border-radius: 40px;
-            padding: 0.5rem 1.8rem;
-            font-weight: 500;
-            border: none;
-            transition: all 0.2s;
-        }
-        .btn-primary {
-            background: #5d9bff;
-            background: linear-gradient(145deg, #5d9bff, #4a7fdb);
-        }
-        .btn-primary:hover {
-            background: #3f6eb0;
-            transform: scale(1.02);
-        }
-        .btn-secondary {
-            background: #e9ecf3;
-            color: #2c3e50;
-        }
-        .btn-secondary:hover {
-            background: #dde1e8;
-            color: #1e2b38;
-        }
-        .form-control, .form-select {
-            border-radius: 18px;
-            border: 1px solid #e0e4ec;
-            padding: 0.6rem 1.2rem;
-            background-color: #fafbfe;
-            transition: border 0.2s, box-shadow 0.2s;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: #5d9bff;
-            box-shadow: 0 0 0 4px rgba(93,155,255,0.15);
-            background-color: white;
-        }
-        h1, h2, h3 {
-            font-weight: 500;
-            color: #1a2634;
+            font-weight: 700;
+            font-size: 1.35rem;
             letter-spacing: -0.5px;
+            color: var(--accent) !important;
+            transition: opacity 0.2s ease, color 0.2s ease;
         }
-        .container {
-            max-width: 1000px;
+        .navbar-brand:hover {
+            color: var(--accent-h) !important;
+            opacity: 0.92;
         }
-        /* 新增：图标与文字对齐辅助 */
-        .bi {
-            vertical-align: -0.125em;
+        .navbar-brand:focus-visible {
+            outline: 2px solid rgba(99, 102, 241, 0.45);
+            outline-offset: 4px;
+            border-radius: 10px;
         }
-        .feature-icon {
-            font-size: 2rem;
-            color: #5d9bff;
+
+        main.tb-main { min-height: calc(100dvh - 120px); }
+
+        /* —— 首页 Hero —— */
+        .hero {
+            padding: 3.25rem 1rem 2.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+        }
+        .hero h1 {
+            font-size: clamp(2rem, 6vw, 3.25rem);
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(90deg, #4f46e5, #7c3aed, #ec4899);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.75rem;
+            line-height: 1.05;
+        }
+        .hero p {
+            font-size: 1.1rem;
+            color: var(--text3);
+            max-width: 540px;
+            margin: 0 auto;
+        }
+
+        /* —— 首页工具网格 —— */
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            padding: 2rem 1.25rem 1rem;
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        a.tool-card {
+            text-decoration: none;
+            color: inherit;
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+            position: relative;
+            cursor: pointer;
+            animation: tb-fade-up 0.5s var(--ease-out) backwards;
+        }
+        a.tool-card:nth-child(1) { animation-delay: 0.04s; }
+        a.tool-card:nth-child(2) { animation-delay: 0.1s; }
+        a.tool-card:nth-child(3) { animation-delay: 0.16s; }
+        a.tool-card:nth-child(4) { animation-delay: 0.22s; }
+        a.tool-card:nth-child(5) { animation-delay: 0.28s; }
+        a.tool-card:nth-child(6) { animation-delay: 0.34s; }
+        a.tool-card:nth-child(7) { animation-delay: 0.4s; }
+        a.tool-card:nth-child(8) { animation-delay: 0.46s; }
+
+        a.tool-card:hover {
+            transform: translateY(-10px) scale(1.015);
+            box-shadow: var(--shadow-md);
+            border-color: rgba(99, 102, 241, 0.4);
+        }
+        a.tool-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 40%, rgba(99, 102, 241, 0.08) 100%);
+            opacity: 0;
+            transition: opacity 0.35s ease;
+            pointer-events: none;
+        }
+        a.tool-card:hover::before { opacity: 1; }
+
+        .tool-card .card-content {
+            padding: 2rem 1.65rem 1.85rem;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .icon-wrapper {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(145deg, #f1f5f9, #e2e8f0);
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 3rem;  /* 固定高度，确保所有图标容器大小一致 */
-            margin-bottom: 1rem; /* 与 mb-3 作用相同，可保留或删除 */
+            margin: 0 auto 1.35rem;
+            font-size: 2rem;
+            color: var(--accent);
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.06);
+            transition: var(--transition);
+        }
+        a.tool-card:hover .icon-wrapper {
+            background: linear-gradient(145deg, #e0e7ff, #c7d2fe);
+            transform: scale(1.1) rotate(3deg);
+            color: var(--accent-d);
+        }
+
+        .tool-card h5 {
+            font-size: 1.22rem;
+            font-weight: 700;
+            margin-bottom: 0.65rem;
+            color: var(--text);
+        }
+        .tool-card p {
+            font-size: 0.92rem;
+            color: var(--text2);
+            line-height: 1.45;
+            margin-bottom: 1.35rem;
+        }
+
+        .btn-glow {
+            display: inline-block;
+            background: var(--accent);
+            color: #fff !important;
+            font-weight: 600;
+            border: none;
+            border-radius: 999px;
+            padding: 0.65rem 1.65rem;
+            pointer-events: none;
+            box-shadow: 0 6px 16px -4px rgba(99, 102, 241, 0.35);
+            transition: var(--transition);
+        }
+        a.tool-card:hover .btn-glow {
+            background: var(--accent-h);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 22px -6px rgba(99, 102, 241, 0.42);
+        }
+
+        /* —— 内页通用 —— */
+        .tb-page-wrap {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 2.25rem 1.25rem 2rem;
+            animation: tb-fade-up 0.45s var(--ease-out) backwards;
+        }
+
+        .tb-panel {
+            background: var(--surface-d);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(226, 232, 240, 0.55);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .tb-back {
+            margin-bottom: 1rem;
+        }
+        .tb-back a {
+            color: var(--text3);
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        .tb-back a:hover { color: var(--accent); }
+
+        .tb-heading-icon { color: var(--accent); }
+
+        .tb-time-display {
+            font-size: 1.12rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        h1.tb-title, h2.tb-title {
+            font-weight: 700;
+            letter-spacing: -0.4px;
+            color: var(--text);
+        }
+
+        .text-muted { color: var(--text3) !important; }
+
+        .btn-primary {
+            background: var(--accent);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            border-radius: 999px;
+            padding: 0.55rem 1.65rem;
+            box-shadow: 0 6px 16px -4px rgba(99, 102, 241, 0.32);
+            transition: var(--transition);
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background: var(--accent-h);
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 22px -6px rgba(99, 102, 241, 0.4);
+        }
+        .btn-primary:active { transform: translateY(0); }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: var(--text);
+            border: none;
+            font-weight: 600;
+            border-radius: 999px;
+            transition: var(--transition);
+        }
+        .btn-secondary:hover {
+            background: #cbd5e1;
+            color: var(--text);
+        }
+
+        .btn-outline-primary {
+            color: var(--accent);
+            border: 2px solid rgba(99, 102, 241, 0.45);
+            background: transparent;
+            font-weight: 600;
+            border-radius: 999px;
+            transition: var(--transition);
+        }
+        .btn-outline-primary:hover {
+            background: var(--accent-soft);
+            border-color: var(--accent);
+            color: var(--accent-d);
+        }
+
+        .btn-outline-secondary {
+            border-radius: 999px;
+            font-weight: 500;
+            border-color: rgba(148, 163, 184, 0.6);
+            transition: var(--transition);
+        }
+        .btn-outline-secondary:hover {
+            background: rgba(241, 245, 249, 0.9);
+            border-color: rgba(148, 163, 184, 0.8);
+        }
+
+        .btn:focus-visible {
+            outline: 2px solid rgba(99, 102, 241, 0.5);
+            outline-offset: 2px;
+        }
+
+        .form-control, .form-select {
+            border-radius: 14px;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            padding: 0.6rem 1.1rem;
+            background: rgba(248, 250, 252, 0.9);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+            background: #fff;
+        }
+
+        .form-label { color: var(--text2); font-weight: 600; }
+
+        .tb-dropzone {
+            border: 2px dashed rgba(99, 102, 241, 0.45) !important;
+            border-radius: var(--radius) !important;
+            background: rgba(99, 102, 241, 0.04) !important;
+            cursor: pointer;
+            transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+        }
+        .tb-dropzone:hover {
+            border-color: var(--accent) !important;
+            background: rgba(99, 102, 241, 0.08) !important;
+        }
+
+        .tb-soft-primary {
+            border-radius: 999px;
+            font-weight: 600;
+            color: var(--accent);
+            background: var(--accent-soft);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+        .tb-soft-primary:hover {
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--accent-d);
+        }
+
+        .tb-soft-danger {
+            border-radius: 999px;
+            font-weight: 600;
+            color: #e11d48;
+            background: rgba(244, 63, 94, 0.1);
+            border: 1px solid rgba(244, 63, 94, 0.22);
+            padding: 0.3rem 1.1rem;
+            transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+        .tb-soft-danger:hover {
+            background: #e11d48;
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        /* Leaflet / 内嵌区块 */
+        #mapWrap, [id="mapWrap"] {
+            background: rgba(248, 250, 252, 0.9) !important;
+            border: 1px solid rgba(226, 232, 240, 0.6) !important;
+        }
+
+        .tb-code-box {
+            background: rgba(248, 250, 252, 0.95);
+            border-radius: var(--radius);
+            padding: 1rem;
+            border: 1px solid rgba(226, 232, 240, 0.7);
+        }
+
+        .tb-hr {
+            border: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.2), transparent);
+            margin: 1.75rem 0;
+            opacity: 1;
+        }
+
+        .tb-clock-cell {
+            background: rgba(248, 250, 252, 0.92);
+            border-radius: var(--radius);
+            border: 1px solid rgba(226, 232, 240, 0.75);
+        }
+        .tb-clock-time-lg {
+            font-size: 1.65rem;
+            font-weight: 700;
+            letter-spacing: -0.35px;
+            color: var(--text);
+        }
+        .tb-badge-outline {
+            border: 1px solid rgba(226, 232, 240, 0.95) !important;
+            background: rgba(255, 255, 255, 0.88) !important;
+            color: var(--text2) !important;
+            font-weight: 500;
+        }
+
+        .tb-footer {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.875rem;
+            margin: 3rem 1rem 1rem;
+            opacity: 0.9;
+        }
+        .tb-footer i { color: #c4b5fd; }
+
+        @keyframes tb-fade-up {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 576px) {
+            .hero { padding: 2.5rem 1rem 2rem; }
+            .tool-grid { gap: 1.2rem; padding: 1.5rem 1rem 0.5rem; }
+            .tool-card .card-content { padding: 1.75rem 1.35rem 1.5rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            a.tool-card,
+            .btn-primary,
+            .btn-secondary,
+            .btn-outline-primary,
+            .icon-wrapper,
+            .btn-glow {
+                transition: none !important;
+            }
+            a.tool-card:hover,
+            a.tool-card:hover .icon-wrapper,
+            a.tool-card:hover .btn-glow,
+            .btn-primary:hover {
+                transform: none !important;
+            }
+            a.tool-card,
+            .tb-page-wrap {
+                animation: none !important;
+            }
         }
     </style>
+    {% block head_extra %}{% endblock %}
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg">
-        <div class="container">
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container-fluid px-3 px-md-4" style="max-width: 1280px; margin: 0 auto;">
             <a class="navbar-brand" href="/">
                 <i class="bi bi-tools me-2"></i>Ethan's Toolbox
             </a>
         </div>
     </nav>
-    <div class="container mt-5">
+
+    <main class="tb-main">
         {% block content %}{% endblock %}
-    </div>
-    <footer class="text-center text-muted py-4 small">
-        <i class="bi bi-star-fill me-1" style="color: #ffc107;"></i> 本地工具集 · 不想用云端的
+    </main>
+
+    <footer class="tb-footer">
+        <small><i class="bi bi-shield-lock me-1"></i>本地工具集 · 隐私优先 · 不依赖云端</small>
     </footer>
 </body>
 </html>

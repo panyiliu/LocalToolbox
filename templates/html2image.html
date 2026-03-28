@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}{{ tool.name }} · 工具箱{% endblock %}
+{% block title %}{{ tool.name }} · Ethan's Toolbox{% endblock %}
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card p-4">
-            <h2 class="mb-3">
-                <i class="bi bi-filetype-html me-2" style="color: #5d9bff;"></i>{{ tool.name }}
+<div class="tb-page-wrap">
+    <div class="tb-back"><a href="/"><i class="bi bi-arrow-left-short me-1"></i>返回所有工具</a></div>
+    <div class="tb-panel p-4 p-md-5">
+            <h2 class="tb-title mb-3">
+                <i class="bi bi-filetype-html me-2 tb-heading-icon"></i>{{ tool.name }}
             </h2>
             <p class="text-muted mb-4">{{ tool.description }}</p>
             <form id="toolForm" enctype="multipart/form-data">
@@ -41,7 +41,6 @@
                     </a>
                 </div>
             </form>
-        </div>
     </div>
 </div>
 

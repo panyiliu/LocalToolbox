@@ -1,29 +1,21 @@
 {% extends "base.html" %}
-{% block title %}主页 · 工具箱{% endblock %}
+{% block title %}主页 · Ethan's Toolbox{% endblock %}
 {% block content %}
-<div class="text-center mb-5">
-    <h1 class="display-6 fw-normal">
-        <i class="bi bi-grid-3x3-gap-fill me-2" style="color: #5d9bff;"></i>所有工具
-    </h1>
-    <p class="text-muted">选择你需要的功能，轻松转换</p>
-</div>
-<div class="row g-4">
+<section class="hero">
+    <h1>本地 · 极简 · 高效</h1>
+    <p>不依赖云端，隐私优先，专为效率控打造的个人工具箱</p>
+</section>
+
+<div class="tool-grid">
     {% for tool in tools %}
-    <div class="col-md-4">
-        <div class="card h-100 p-3">
-            <div class="card-body text-center">
-                <!-- 使用工具配置的图标 -->
-                <div class="feature-icon mb-3">
-                    <i class="bi {{ tool.icon }}"></i>
-                </div>
-                <h5 class="card-title">{{ tool.name }}</h5>
-                <p class="card-text text-muted small">{{ tool.description }}</p>
-                <a href="/tool/{{ tool.id }}" class="btn btn-primary mt-2">
-                    使用工具 <i class="bi bi-arrow-right-short"></i>
-                </a>
-            </div>
+    <a href="/tool/{{ tool.id }}" class="tool-card">
+        <div class="card-content">
+            <div class="icon-wrapper"><i class="bi {{ tool.icon }}"></i></div>
+            <h5>{{ tool.name }}</h5>
+            <p>{{ tool.description }}</p>
+            <span class="btn-glow">立即使用</span>
         </div>
-    </div>
+    </a>
     {% endfor %}
 </div>
 {% endblock %}
