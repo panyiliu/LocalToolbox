@@ -104,6 +104,40 @@ docker compose up -d
 - `scripts/`：预检与开发辅助脚本
 - `tests/`：契约与回归测试
 
+## 架构维护指南（长期）
+
+### 核心分层约定
+
+- `app.py`：只负责路由入口与请求分发，不承载业务细节。
+- `core/`：沉淀跨工具共用能力（调度、响应、运行时检查、渲染引擎边界）。
+- `tools/`：每个工具的业务胶水层，输入校验 + 调用核心能力 + 返回响应。
+- `templates/` 与 `static/js/*-page.js`：页面结构与页面交互拆分，避免模板内大段脚本。
+
+### 新增一个工具的标准流程
+
+1. 在 `core/tool_registry.py` 注册工具元信息（`id`、`template`、`module`）。
+2. 新建 `templates/<tool_id>.html` 页面模板。
+3. 新建 `tools/<tool_id>.py` 后端处理逻辑（暴露 `process(request, upload_folder)`）。
+4. 若有复杂交互，新建 `static/js/<tool_id>-page.js`，模板只保留最小初始化脚本。
+5. 补充测试：
+   - `tests/test_api_contract.py` 覆盖路由契约；
+   - 新增工具的成功/失败边界测试。
+
+### 代码变更边界
+
+- 只在必要层改动：页面问题先看 `templates/static`，业务问题先看 `tools/core`。
+- 禁止把环境探测、文件清理、下载响应等横切逻辑复制到每个工具里，优先复用 `core/`。
+- 新增依赖前先确认是否可由现有模块复用，避免“每个工具一套实现”。
+
+### 发布与回归基线
+
+- 本地提交前固定执行：
+  - `npm run preflight`
+  - `npm run test`
+- 推送 `main` 后由 GitHub Actions 发布 `ghcr.io/panyiliu/localtoolbox:latest`。
+- 生产更新通过 Watchtower（`--label-enable` + `com.centurylinklabs.watchtower.enable=true`）。
+- 页面右下角版本角标用于确认容器是否已经更新到新镜像。
+
 ## 说明
 
 - `uploads/`：运行时生成目录（已忽略，仅保留占位）
