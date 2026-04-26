@@ -1,10 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const path = require("node:path");
 const vm = require("node:vm");
 
 function loadCommonJs(fetchImpl, alertCollector = []) {
-  const script = fs.readFileSync("D:/Coding/my_toolbox_cursor/static/js/common.js", "utf8");
+  const scriptPath = path.resolve(__dirname, "../../static/js/common.js");
+  const script = fs.readFileSync(scriptPath, "utf8");
   const context = {
     fetch: fetchImpl,
     alert: (msg) => alertCollector.push(msg),
