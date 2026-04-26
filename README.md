@@ -1,73 +1,91 @@
 # LocalToolbox
 
-本地 Flask 工具箱：HTML 转图、文件夹树、照片时间戳、世界时钟、世界地图时钟等。
+本地优先的 Flask 工具箱，包含常用文件与时间工具，适合个人与小团队快速部署。
 
-## 环境契约
+## 功能概览
+
+- HTML 转图片（JPEG/PNG，基于 Playwright + Chromium）
+- 文件夹树查看器
+- 照片添加拍摄时间戳
+- 世界时钟 / 世界地图时钟
+
+## 技术栈
+
+- Python + Flask
+- Playwright（Chromium）+ Pillow
+- Bootstrap + 原生 JavaScript
+- Docker / Docker Compose
+
+## 环境要求
 
 - Python `>=3.10`
+- Node.js（用于统一命令入口）
 - `playwright==1.49.0`
-- Chromium 浏览器二进制（供 HTML 转图使用）
-- 默认端口：`5000`（可通过 `FLASK_PORT` 覆盖）
+- Chromium 浏览器二进制（HTML 转图需要）
 
-## 本地运行（推荐）
+默认监听端口：`5000`（可通过 `FLASK_PORT` 覆盖）
+
+## 快速开始（本地开发）
 
 ```bash
 pip install -r requirements.txt
 npm run dev
 ```
 
-浏览器访问 `http://127.0.0.1:5000`（端口见 `config.py`）。
+浏览器访问：`http://127.0.0.1:5000`
 
-如果提示 Playwright/Chromium 缺失，可一键修复：
+如果提示 Chromium 缺失：
 
 ```bash
 npm run repair:playwright
 ```
 
-## 启动前自检
+## 命令说明
+
+- `npm run dev`：启动前自检 + 启动服务
+- `npm run preflight`：运行完整环境检查（含端口）
+- `npm run preflight:skip-port`：跳过端口检查（容器内常用）
+- `npm run test`：Python + JS 测试全跑
+- `npm run test:py`：仅 Python 测试
+- `npm run test:js`：仅 JS 测试
+
+## Docker 部署
 
 ```bash
-# 完整自检（含端口占用）
-npm run preflight
-
-# 跳过端口检查（常用于容器内）
-npm run preflight:skip-port
+docker compose up -d --build
+docker compose ps
 ```
 
-自检规则：
-- 阻断项：Python 版本/依赖、目录可写性、Playwright Chromium 可用性、端口可用性
-- 告警项：`FLASK_DEBUG` 处于开启状态
+镜像基于 [Playwright 官方 Python 镜像](https://playwright.dev/python/docs/docker)，内置 Chromium 运行环境。
 
-生产 / Docker 建议设置环境变量：`FLASK_DEBUG=false`。
+## 发布流程（推荐）
 
-## Docker（推荐部署方式）
+1. 本地开发并运行：`npm run dev`
+2. 提交前运行：`npm run test`
+3. 推送代码到远程仓库
+4. 服务器拉取并重启：
+   - `git fetch origin`
+   - `git reset --hard origin/main`
+   - `docker compose up -d --build`
 
-```bash
-# 构建
-docker build -t <你的DockerHub用户名>/localtoolbox:latest .
+## 推送卫生规范
 
-# 登录并推送（Docker Hub 示例）
-docker login
-docker push <你的DockerHub用户名>/localtoolbox:latest
-```
+- 已忽略：`.cursor/`、`node_modules/`、日志、临时文件、`uidemo.html`
+- 推送前建议执行：
+  - `git status --short`
+  - `npm run test`
+- 建议启用本仓库提供的 pre-commit 守卫（见 `scripts/install-git-hooks.*`）
 
-或使用 Compose 本地运行：
+## 目录说明
 
-```bash
-docker compose up --build
-```
-
-访问 `http://127.0.0.1:5000`。
-
-镜像基于 [Playwright 官方 Python 镜像](https://playwright.dev/python/docs/docker)，体积较大，用于支持 **HTML 转图片**（Chromium）。
-
-## 不再用 GitHub 托管代码时
-
-- **清空/删除远程仓库**：在 GitHub 打开仓库 → **Settings** → 最底部 **Delete this repository**（需仓库名确认）。
-- **仅本地不再关联远程**：`git remote remove origin`（不会删除 GitHub 上的内容）。
-- 部署改为：在能联网的机器上 `docker build` + `docker push`，服务器上 `docker pull` + `docker run`（无需把代码放在 GitHub）。
+- `tools/`：后端工具实现
+- `core/`：调度、响应、运行时检查等核心能力
+- `templates/`：页面模板
+- `static/`：前端脚本与静态资源
+- `scripts/`：预检与开发辅助脚本
+- `tests/`：契约与回归测试
 
 ## 说明
 
-- `uploads/`：工具生成的上传目录（已加入 `.gitignore`，仅保留占位文件）
-- `logs/`：运行日志（不提交）
+- `uploads/`：运行时生成目录（已忽略，仅保留占位）
+- `logs/`：日志目录（已忽略）

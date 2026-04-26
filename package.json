@@ -8,6 +8,8 @@
     "dev": "npm run preflight && python app.py",
     "dev:skip-noncritical": "python scripts/preflight.py --skip-noncritical && python app.py",
     "repair:playwright": "python -m playwright install chromium",
+    "guard:staged": "python scripts/precommit_guard.py",
+    "hooks:install": "powershell -ExecutionPolicy Bypass -File scripts/install-git-hooks.ps1",
     "test": "npm run test:py && npm run test:js",
     "test:py": "python -m pytest",
     "test:js": "node --test tests/js/common.spec.js"

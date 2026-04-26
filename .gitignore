@@ -7,17 +7,20 @@ __pycache__/
 .venv/
 venv/
 env/
+.pytest_cache/
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+.cursor/
 
 # Flask / 本地数据（勿提交）
 uploads/*
 !uploads/.gitkeep
 logs/*.log
+logs/*.txt
 
 # OS
 .DS_Store
@@ -26,3 +29,10 @@ Thumbs.db
 # 密钥 / 环境
 .env
 .env.*
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Local artifacts
+uidemo.html
