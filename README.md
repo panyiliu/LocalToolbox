@@ -2,14 +2,41 @@
 
 本地 Flask 工具箱：HTML 转图、文件夹树、照片时间戳、世界时钟、世界地图时钟等。
 
-## 运行
+## 环境契约
+
+- Python `>=3.10`
+- `playwright==1.49.0`
+- Chromium 浏览器二进制（供 HTML 转图使用）
+- 默认端口：`5000`（可通过 `FLASK_PORT` 覆盖）
+
+## 本地运行（推荐）
 
 ```bash
 pip install -r requirements.txt
-python app.py
+npm run dev
 ```
 
 浏览器访问 `http://127.0.0.1:5000`（端口见 `config.py`）。
+
+如果提示 Playwright/Chromium 缺失，可一键修复：
+
+```bash
+npm run repair:playwright
+```
+
+## 启动前自检
+
+```bash
+# 完整自检（含端口占用）
+npm run preflight
+
+# 跳过端口检查（常用于容器内）
+npm run preflight:skip-port
+```
+
+自检规则：
+- 阻断项：Python 版本/依赖、目录可写性、Playwright Chromium 可用性、端口可用性
+- 告警项：`FLASK_DEBUG` 处于开启状态
 
 生产 / Docker 建议设置环境变量：`FLASK_DEBUG=false`。
 

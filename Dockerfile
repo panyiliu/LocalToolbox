@@ -19,4 +19,4 @@ RUN mkdir -p uploads logs
 
 EXPOSE 5000
 
-CMD ["python", "app.py"]
+CMD ["sh", "-c", "python scripts/preflight.py --skip-port-check && python app.py"]

@@ -84,6 +84,52 @@ def get_new_filename(original_name):
     base = os.path.splitext(original_name)[0]
     return f"watermark_{base}.jpg"
 
+
+def is_supported_image(filename):
+    return filename.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.tiff'))
+
+
+def resolve_timestamp(image, input_path):
+    dt = get_exif_datetime(image)
+    if dt is None:
+        dt = get_file_modify_time(input_path)
+        logger.info(f"使用文件修改时间: {dt}")
+    else:
+        logger.info(f"使用 EXIF 拍摄时间: {dt}")
+    return dt
+
+
+def process_single_photo(file, temp_dir):
+    if not is_supported_image(file.filename):
+        logger.warning(f"跳过非图片文件: {file.filename}")
+        return None
+
+    input_path = os.path.join(temp_dir, file.filename)
+    file.save(input_path)
+
+    try:
+        img = Image.open(input_path)
+    except Exception as e:
+        logger.error(f"无法打开图片 {file.filename}: {e}")
+        return None
+
+    dt = resolve_timestamp(img, input_path)
+    text = dt.strftime('%Y-%m-%d %H:%M')
+    img_with_watermark = add_watermark(img, text)
+
+    new_filename = get_new_filename(file.filename)
+    output_path = os.path.join(temp_dir, new_filename)
+    img_with_watermark.save(output_path, 'JPEG', quality=95)
+    return output_path
+
+
+def package_outputs(output_files, upload_folder):
+    zip_path = os.path.join(upload_folder, f'timestamped_photos_{os.urandom(4).hex()}.zip')
+    with zipfile.ZipFile(zip_path, 'w') as z:
+        for output_file in output_files:
+            z.write(output_file, arcname=os.path.basename(output_file))
+    return zip_path
+
 def process(request, upload_folder):
     logger.info("开始处理照片添加时间戳请求")
 
@@ -94,37 +140,13 @@ def process(request, upload_folder):
     temp_dir = os.path.join(upload_folder, 'photo_ts_' + os.urandom(4).hex())
     os.makedirs(temp_dir, exist_ok=True)
 
-    output_files = []  # 存放最终要返回的文件路径
+    output_files = []
 
     try:
         for file in files:
-            if not file.filename.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.tiff')):
-                logger.warning(f"跳过非图片文件: {file.filename}")
-                continue
-
-            input_path = os.path.join(temp_dir, file.filename)
-            file.save(input_path)
-
-            try:
-                img = Image.open(input_path)
-            except Exception as e:
-                logger.error(f"无法打开图片 {file.filename}: {e}")
-                continue
-
-            dt = get_exif_datetime(img)
-            if dt is None:
-                dt = get_file_modify_time(input_path)
-                logger.info(f"使用文件修改时间: {dt}")
-            else:
-                logger.info(f"使用 EXIF 拍摄时间: {dt}")
-
-            text = dt.strftime('%Y-%m-%d %H:%M')
-            img_with_watermark = add_watermark(img, text)
-
-            new_filename = get_new_filename(file.filename)
-            output_path = os.path.join(temp_dir, new_filename)
-            img_with_watermark.save(output_path, 'JPEG', quality=95)
-            output_files.append(output_path)
+            output_path = process_single_photo(file, temp_dir)
+            if output_path:
+                output_files.append(output_path)
 
         if not output_files:
             return error("没有成功处理的图片", 400)
@@ -140,11 +162,7 @@ def process(request, upload_folder):
                 cleanup_dirs=[temp_dir],
             )
 
-        # 多文件打包为 ZIP
-        zip_path = os.path.join(upload_folder, f'timestamped_photos_{os.urandom(4).hex()}.zip')
-        with zipfile.ZipFile(zip_path, 'w') as z:
-            for f in output_files:
-                z.write(f, arcname=os.path.basename(f))
+        zip_path = package_outputs(output_files, upload_folder)
         return file_response(
             zip_path,
             download_name='timestamped_photos.zip',

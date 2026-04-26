@@ -1,11 +1,15 @@
 import importlib
 import traceback
 from core.logger import get_logger
+from core.tool_registry import get_tool
 
 logger = get_logger('loader')
 
 def load_tool(tool_id):
-    """动态加载工具模块，返回模块对象或None"""
+    """兼容函数：仅允许加载注册表中存在的工具模块"""
+    if not get_tool(tool_id):
+        logger.error(f'工具未注册: {tool_id}')
+        return None
     try:
         module = importlib.import_module(f'tools.{tool_id}')
         logger.info(f'成功加载工具: {tool_id}')
