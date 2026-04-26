@@ -11,6 +11,13 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 logger = get_logger('app')
 
+@app.context_processor
+def inject_build_info():
+    return {
+        "app_version": os.environ.get("APP_VERSION", "dev"),
+        "app_build_time": os.environ.get("APP_BUILD_TIME", ""),
+    }
+
 @app.route('/')
 def index():
     return render_template('index.html', tools=TOOLS)

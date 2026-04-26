@@ -403,6 +403,31 @@
         }
         .tb-footer i { color: #c4b5fd; }
 
+        .tb-version-badge {
+            position: fixed;
+            right: 0.75rem;
+            bottom: 0.75rem;
+            z-index: 50;
+            font-size: 0.72rem;
+            line-height: 1.1;
+            padding: 0.4rem 0.55rem;
+            border-radius: 999px;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            background: rgba(255, 255, 255, 0.75);
+            color: var(--text3);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            user-select: none;
+            opacity: 0.75;
+            transition: opacity 0.2s ease;
+        }
+        .tb-version-badge:hover { opacity: 0.95; }
+        .tb-version-badge code {
+            color: var(--text2);
+            background: transparent;
+            padding: 0;
+        }
+
         @keyframes tb-fade-up {
             from { opacity: 0; transform: translateY(14px); }
             to { opacity: 1; transform: translateY(0); }
@@ -453,5 +478,10 @@
     <footer class="tb-footer">
         <small><i class="bi bi-shield-lock me-1"></i>本地工具集 · 隐私优先 · 不依赖云端</small>
     </footer>
+
+    <div class="tb-version-badge" title="{{ app_build_time }}">
+        <span>v</span>
+        <code>{{ app_version[:7] }}</code>
+    </div>
 </body>
 </html>

@@ -60,3 +60,6 @@ jobs:
           context: .
           push: true
           tags: ${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+            APP_BUILD_TIME=${{ github.event.head_commit.timestamp }}
