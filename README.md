@@ -52,11 +52,29 @@ npm run repair:playwright
 ## Docker 部署
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 docker compose ps
 ```
 
 镜像基于 [Playwright 官方 Python 镜像](https://playwright.dev/python/docs/docker)，内置 Chromium 运行环境。
+
+### 使用 GHCR + Watchtower 自动更新
+
+本项目默认镜像：`ghcr.io/panyiliu/localtoolbox:latest`
+
+服务器首次部署：
+
+```bash
+docker login ghcr.io -u panyiliu
+docker compose pull
+docker compose up -d
+```
+
+本仓库的 `docker-compose.yml` 已为 `localtoolbox` 配置 Watchtower label：
+
+- `com.centurylinklabs.watchtower.enable=true`
+
+确保你的 Watchtower 启动参数包含 `--label-enable`，即可实现“只更新带 label 的容器”。后续只要 `main` 有新 push，GitHub Actions 会发布新镜像到 GHCR，Watchtower 会自动拉取并重启容器。
 
 ## 发布流程（推荐）
 
@@ -66,7 +84,8 @@ docker compose ps
 4. 服务器拉取并重启：
    - `git fetch origin`
    - `git reset --hard origin/main`
-   - `docker compose up -d --build`
+   - `docker compose pull`
+   - `docker compose up -d`
 
 ## 推送卫生规范
 
