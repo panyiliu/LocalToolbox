@@ -6,6 +6,7 @@ def get_logger(name='toolbox'):
     """获取日志记录器"""
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
+    logger.propagate = False
 
     # 避免重复添加handler
     if logger.handlers:

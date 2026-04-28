@@ -45,6 +45,8 @@ class ExportDiagnostics:
     failed_requests: list[dict]
     http_errors: list[dict]
     console_errors: list[str]
+    image_sources: list[dict]
+    content_selector: str | None = None
 
 
 class ExportError(Exception):
@@ -103,6 +105,7 @@ class PlaywrightHtmlExportEngine:
         ready_state = "unknown"
         html_metrics: dict = {}
         external_resources: list[str] = []
+        image_sources: list[dict] = []
         try:
             ready_state = page.evaluate("document.readyState")
             html_metrics = page.evaluate("""() => ({
@@ -124,6 +127,21 @@ class PlaywrightHtmlExportEngine:
                 }
                 return urls.slice(0, 30);
             }""")
+            image_sources = page.evaluate("""() => {
+                const imgs = Array.from(document.images || []);
+                return imgs.slice(0, 20).map((img, index) => ({
+                    index,
+                    src: img.currentSrc || img.src || '',
+                    complete: Boolean(img.complete),
+                    naturalWidth: Number(img.naturalWidth || 0),
+                    naturalHeight: Number(img.naturalHeight || 0),
+                    clientWidth: Number(img.clientWidth || 0),
+                    clientHeight: Number(img.clientHeight || 0),
+                    loading: img.getAttribute('loading') || '',
+                    crossOrigin: img.getAttribute('crossorigin') || '',
+                    referrerPolicy: img.getAttribute('referrerpolicy') || ''
+                }));
+            }""")
         except Exception:
             pass
 
@@ -139,6 +157,7 @@ class PlaywrightHtmlExportEngine:
             failed_requests=failed_requests[:20],
             http_errors=response_errors[:20],
             console_errors=console_errors[:20],
+            image_sources=image_sources,
         )
 
     @staticmethod
@@ -219,7 +238,18 @@ class PlaywrightHtmlExportEngine:
             f"resource_hosts={diagnostics.resource_hosts} "
             f"external_resource_count={diagnostics.external_resource_count} "
             f"failed_requests={diagnostics.failed_requests} "
-            f"http_errors={diagnostics.http_errors} console_errors={diagnostics.console_errors}"
+            f"http_errors={diagnostics.http_errors} console_errors={diagnostics.console_errors} "
+            f"content_selector={diagnostics.content_selector} image_sources={diagnostics.image_sources}"
+        )
+
+    def _log_pdf_diagnostics(self, stage: str, diagnostics: ExportDiagnostics):
+        self.logger.info(
+            f"[pdf-diagnostics] stage={stage} elapsed_ms={diagnostics.elapsed_ms} "
+            f"page_url={diagnostics.page_url} ready_state={diagnostics.ready_state} "
+            f"html_metrics={diagnostics.html_metrics} content_selector={diagnostics.content_selector} "
+            f"resource_hosts={diagnostics.resource_hosts} failed_requests={diagnostics.failed_requests} "
+            f"http_errors={diagnostics.http_errors} console_errors={diagnostics.console_errors} "
+            f"image_sources={diagnostics.image_sources}"
         )
 
     def render_image(self, html_path: str) -> bytes:
@@ -381,11 +411,29 @@ class PlaywrightHtmlExportEngine:
                 if request.remove_outer_background:
                     self._add_background_reset(page)
 
+                content_selector = None
                 if request.mode == "single_page":
                     content_selector = self._auto_detect_content_selector(page)
                     dims = self._measure_content_dimensions(page, content_selector)
                     pdf_width = int(dims["width"]) + 24
                     pdf_height = int(dims["height"]) + 24
+                    pre_pdf_diagnostics = self._collect_page_diagnostics(
+                        page=page,
+                        elapsed_ms=int((time.perf_counter() - started_at) * 1000),
+                        html_file_size=html_file_size,
+                        failed_requests=failed_requests,
+                        response_errors=response_errors,
+                        console_errors=console_errors,
+                    )
+                    pre_pdf_diagnostics.content_selector = content_selector
+                    self.logger.info(
+                        f"[pdf-layout] mode=single_page content_selector={content_selector} "
+                        f"content_dims={dims} pdf_width={pdf_width} pdf_height={pdf_height} "
+                        f"remove_outer_background={request.remove_outer_background} "
+                        f"print_background={request.print_background} landscape={request.landscape} "
+                        f"media={request.media}"
+                    )
+                    self._log_pdf_diagnostics("before-pdf-single-page", pre_pdf_diagnostics)
                     self._add_single_page_styles(page, content_selector, pdf_width, pdf_height)
                     page.wait_for_timeout(300)
                     pdf_bytes = page.pdf(
@@ -398,6 +446,22 @@ class PlaywrightHtmlExportEngine:
                         landscape=request.landscape,
                     )
                 else:
+                    pre_pdf_diagnostics = self._collect_page_diagnostics(
+                        page=page,
+                        elapsed_ms=int((time.perf_counter() - started_at) * 1000),
+                        html_file_size=html_file_size,
+                        failed_requests=failed_requests,
+                        response_errors=response_errors,
+                        console_errors=console_errors,
+                    )
+                    pre_pdf_diagnostics.content_selector = "body"
+                    self.logger.info(
+                        f"[pdf-layout] mode=paged format=A4 margin=10mm "
+                        f"remove_outer_background={request.remove_outer_background} "
+                        f"print_background={request.print_background} landscape={request.landscape} "
+                        f"media={request.media}"
+                    )
+                    self._log_pdf_diagnostics("before-pdf-paged", pre_pdf_diagnostics)
                     pdf_bytes = page.pdf(
                         format="A4",
                         print_background=request.print_background,
@@ -423,6 +487,7 @@ class PlaywrightHtmlExportEngine:
                     response_errors=response_errors,
                     console_errors=console_errors,
                 )
+                diagnostics.content_selector = locals().get("content_selector")
                 error_code = self._classify_error(exc)
                 self._log_failure(error_code, exc, diagnostics)
                 raise ExportError(error_code, str(exc), diagnostics) from exc

@@ -135,6 +135,11 @@ def process(request, upload_folder):
         return error(f"HTML 转 PDF 环境检查失败。{build_playwright_repair_hint()}", 503)
 
     options = parse_options(request.form)
+    html_size = os.path.getsize(html_path) if os.path.exists(html_path) else -1
+    logger.info(
+        f"HTML 转 PDF 请求参数: filename={file.filename} html_path={html_path} "
+        f"html_size={html_size} options={options}"
+    )
 
     try:
         output_path = convert(html_path, **options)

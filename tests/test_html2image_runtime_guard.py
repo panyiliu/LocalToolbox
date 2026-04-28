@@ -25,6 +25,7 @@ def test_normalize_conversion_error_navigation_timeout():
         failed_requests=[],
         http_errors=[],
         console_errors=[],
+        image_sources=[],
     )
     normalized = normalize_conversion_error(RenderError("navigation_timeout", "timeout", diagnostics))
     assert "外链资源加载超时" in normalized
