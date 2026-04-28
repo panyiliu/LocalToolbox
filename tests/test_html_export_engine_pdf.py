@@ -27,6 +27,13 @@ class _FakePage:
         self.style_tags.append(content)
 
     def evaluate(self, script, arg=None):
+        if "const imgs = Array.from(document.images || [])" in script:
+            return {
+                "total": 1 if self.auto_selector is not None else 0,
+                "loaded": 1 if self.auto_selector is not None else 0,
+                "zeroNatural": 0,
+                "pending": [],
+            }
         if "document.readyState" == script:
             return "interactive"
         if "document.body ? document.body.scrollWidth" in script:

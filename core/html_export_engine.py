@@ -31,6 +31,8 @@ class ExportPolicy:
     pdf_timeout_ms: int = 10000
     viewport_width: int = 1600
     viewport_height: int = 900
+    image_settle_timeout_ms: int = 10000
+    image_poll_interval_ms: int = 200
 
 
 @dataclass
@@ -230,6 +232,48 @@ class PlaywrightHtmlExportEngine:
             }}
         """)
 
+    @staticmethod
+    def _get_image_state(page) -> dict:
+        return page.evaluate("""() => {
+            const imgs = Array.from(document.images || []);
+            const total = imgs.length;
+            let loaded = 0;
+            let zeroNatural = 0;
+            const pending = [];
+            for (const img of imgs) {
+                const src = img.currentSrc || img.src || '';
+                const complete = Boolean(img.complete);
+                const naturalWidth = Number(img.naturalWidth || 0);
+                if (complete && naturalWidth > 0) loaded += 1;
+                if (complete && naturalWidth <= 0) zeroNatural += 1;
+                if (!complete || naturalWidth <= 0) {
+                    pending.push(src);
+                }
+            }
+            return {
+                total,
+                loaded,
+                zeroNatural,
+                pending: pending.slice(0, 10)
+            };
+        }""")
+
+    def _wait_for_images_ready(self, page):
+        started_at = time.perf_counter()
+        last_state = self._get_image_state(page)
+        if last_state["total"] == 0:
+            return {"status": "no_images", "elapsed_ms": 0, "state": last_state}
+
+        while True:
+            elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+            if last_state["loaded"] == last_state["total"] and last_state["zeroNatural"] == 0:
+                return {"status": "ready", "elapsed_ms": elapsed_ms, "state": last_state}
+            if elapsed_ms >= self.policy.image_settle_timeout_ms:
+                return {"status": "timeout", "elapsed_ms": elapsed_ms, "state": last_state}
+
+            page.wait_for_timeout(self.policy.image_poll_interval_ms)
+            last_state = self._get_image_state(page)
+
     def _log_failure(self, error_code: str, exc: Exception, diagnostics: ExportDiagnostics):
         self.logger.error(
             f"[render-failed] code={error_code} elapsed_ms={diagnostics.elapsed_ms} error={exc} "
@@ -410,6 +454,13 @@ class PlaywrightHtmlExportEngine:
 
                 if request.remove_outer_background:
                     self._add_background_reset(page)
+
+                image_wait_result = self._wait_for_images_ready(page)
+                self.logger.info(
+                    f"[pdf-image-wait] status={image_wait_result['status']} "
+                    f"elapsed_ms={image_wait_result['elapsed_ms']} "
+                    f"state={image_wait_result['state']}"
+                )
 
                 content_selector = None
                 if request.mode == "single_page":
