@@ -1,5 +1,6 @@
 const FILE_MIME_PATTERNS = [
     'application/octet-stream',
+    'application/pdf',
     'audio/',
     'video/',
     'image/',

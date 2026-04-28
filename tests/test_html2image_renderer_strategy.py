@@ -52,7 +52,7 @@ class _FakeBrowser:
     def __init__(self, page):
         self._page = page
 
-    def new_page(self):
+    def new_page(self, **_kwargs):
         return self._page
 
     def close(self):
@@ -91,7 +91,7 @@ def test_render_uses_partial_fallback_on_navigation_timeout(monkeypatch, tmp_pat
     fake_page = _FakePage(goto_error=timeout_error)
 
     monkeypatch.setattr(
-        "core.html2image_engine.sync_playwright",
+        "core.html_export_engine.sync_playwright",
         lambda: _FakePlaywrightContext(fake_page),
     )
 
@@ -111,7 +111,7 @@ def test_render_raises_structured_error_when_fallback_disabled(monkeypatch, tmp_
     fake_page = _FakePage(goto_error=timeout_error)
 
     monkeypatch.setattr(
-        "core.html2image_engine.sync_playwright",
+        "core.html_export_engine.sync_playwright",
         lambda: _FakePlaywrightContext(fake_page),
     )
 

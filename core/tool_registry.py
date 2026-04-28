@@ -17,6 +17,14 @@ _TOOL_DESCRIPTORS: list[ToolDescriptor] = [
         "module": "tools.html2image",
     },
     {
+        "id": "html2pdf",
+        "name": "HTML转PDF",
+        "description": "将HTML文件转换为单页或分页PDF",
+        "icon": "bi-file-earmark-pdf",
+        "template": "html2pdf.html",
+        "module": "tools.html2pdf",
+    },
+    {
         "id": "folder_tree",
         "name": "文件夹树查看器",
         "description": "显示文件夹结构树并支持复制",
